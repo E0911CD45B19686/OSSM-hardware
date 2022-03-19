@@ -195,6 +195,8 @@ void setup()
 
     pinMode(SPEED_POT_PIN, INPUT);
     adcAttachPin(SPEED_POT_PIN);
+    pinMode(36, INPUT);
+    adcAttachPin(36);
 
     analogReadResolution(12);
     analogSetAttenuation(ADC_11db); // allows us to read almost full 3.3V range
@@ -217,19 +219,34 @@ void setup()
     pinMode(ENCODER_SWITCH, INPUT_PULLDOWN);
     attachInterrupt(digitalPinToInterrupt(ENCODER_SWITCH), encoderPushButton, RISING);
 
-    if (g_has_not_homed == true)
-    {
-        LogDebug("OSSM will now home");
-        g_ui.UpdateMessage("Finding Home");
-        stepper.moveToHomeInMillimeters(1, 100, 400, LIMIT_SWITCH_PIN);
-        LogDebug("OSSM has homed, will now move out to max length");
-        g_ui.UpdateMessage("Moving to Max");
-        stepper.moveToPositionInMillimeters((-1 * maxStrokeLengthMm) - strokeZeroOffsetmm);
-        LogDebug("OSSM has moved out, will now set new home?");
-        stepper.setCurrentPositionAsHomeAndStop();
-        LogDebug("OSSM should now be home and happy");
-        g_has_not_homed = false;
-    }
+    // start the WiFi connection task so we can be doing something while homing!
+    xTaskCreatePinnedToCore(wifiConnectionTask,   /* Task function. */
+                            "wifiConnectionTask", /* name of task. */
+                            10000,                /* Stack size of task */
+                            NULL,                 /* parameter of the task */
+                            1,                    /* priority of the task */
+                            &wifiTask,            /* Task handle to keep track of created task */
+                            0);                   /* pin task to core 0 */
+    delay(100);
+
+    // if (g_has_not_homed == true)
+    // {
+    //     LogDebug("OSSM will now home");
+    //     g_ui.UpdateMessage("Finding Home");
+    //     stepper.setSpeedInMillimetersPerSecond(25);
+    //     stepper.moveToHomeInMillimeters(1, 25, 300, LIMIT_SWITCH_PIN);
+    //     LogDebug("OSSM has homed, will now move out to max length");
+    //     g_ui.UpdateMessage("Moving to Max");
+    //     stepper.setSpeedInMillimetersPerSecond(7);
+    //     stepper.moveToPositionInMillimeters((-1 * maxStrokeLengthMm) - strokeZeroOffsetmm);
+    //     LogDebug("OSSM has moved out, will now set new home?");
+    //     stepper.setCurrentPositionAsHomeAndStop();
+    //     LogDebug("OSSM should now be home and happy");
+    //     g_has_not_homed = false;
+    // }
+
+    stepper.setSpeedInMillimetersPerSecond(7);
+    stepper.moveToPositionInMillimeters(-100);
 
 
     // Kick off the http and motion tasks - they begin executing as soon as they
